@@ -405,6 +405,71 @@ int main(int argc, char *argv[]) {
    Begin your code here 	  			       */
 
 /***************************************************************/
+void updateCond(int num){
+  if(num>0){
+    NEXT_LATCHES.N=0;
+    NEXT_LATCHES.Z=0;
+    NEXT_LATCHES.P=1;
+  }
+  else if(num==0){
+    NEXT_LATCHES.N=0;
+    NEXT_LATCHES.Z=1;
+    NEXT_LATCHES.P=0;
+  }
+  else if(num<0){
+    NEXT_LATCHES.N=1;
+    NEXT_LATCHES.Z=0;
+    NEXT_LATCHES.P=0;
+  }
+}
+
+void updateMem(int instruction){
+  int operation=instruction>>12;
+  int condition=instruction;
+  int dr=instruction&0x0E00;
+  dr>>=9;
+  //ADD
+  if(operation==0x1){
+    condition&=0x0020;
+    int sr1=instruction&0x01C0;
+    sr1>>=6;
+    if(condition==0){//register add
+      int sr2=instruction&0x0007;
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+CURRENT_LATCHES.REGS[sr2];
+      updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+    else{//imediate add
+      int imm5=instruction&0x001F;
+       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+imm5;
+       updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+  }
+
+  //AND
+  if(operation==0x5){
+    condition&=0x0020;
+    int sr1=instruction&0x01C0;
+    sr1>>=6;
+    if(condition==0){//register add
+      int sr2=instruction&0x0007;
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&CURRENT_LATCHES.REGS[sr2];
+      updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+    else{//imediate add
+      int imm5=instruction&0x001F;
+       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&imm5;
+       updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+  }
+
+  //BR
+  if(operation==0){
+    int offset=instruction&0x01FF;
+    NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offset;
+  }
+
+  //JMP
+}
 
 
 char* toBinary(int num){
@@ -442,7 +507,9 @@ void process_instruction(){
   //printf("current latch pc: %x\n",CURRENT_LATCHES.PC);
   //printf("memory 0: %x    memory 1: %x\n",MEMORY[CURRENT_LATCHES.PC>>1][0],MEMORY[CURRENT_LATCHES.PC>>1][1]);
   printf("instruction: %s  %x\n",binary,instruction);
-
+  //dhiraj code
+  
+  //dhiraj code ended
   //to process trap functions set pc to 0
   //don't have to implement RTI
   //be sure to do 16-bit arithmetic
