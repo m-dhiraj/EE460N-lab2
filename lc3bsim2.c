@@ -407,6 +407,19 @@ int main(int argc, char *argv[]) {
 /***************************************************************/
 
 
+char* toBinary(int num){
+  //printf("toBinary called");
+  //stringa1 = (char*) malloc((n+1)*sizeof(char));
+  char* word=(char*)malloc((16)*sizeof(char));
+  int i;
+  for(i=15;i>=0;i--){
+    word[i]=(num%2)+'0';
+    num/=2;
+  }
+  word[16]='\0';
+  return word;
+}
+
 
 void process_instruction(){
   /*  function: process_instruction
@@ -417,5 +430,21 @@ void process_instruction(){
    *       -Execute
    *       -Update NEXT_LATCHES
    */     
+  
+  //get pc line num from struct
+  //fetch instruction from memory
+  //decode instruction
+  //call function for different instructions and pass parameters
 
+  int instruction=(MEMORY[CURRENT_LATCHES.PC>>1][1]<<8)+MEMORY[CURRENT_LATCHES.PC>>1][0];
+  NEXT_LATCHES.PC=CURRENT_LATCHES.PC+2;
+  char* binary=toBinary(instruction);
+  //printf("current latch pc: %x\n",CURRENT_LATCHES.PC);
+  //printf("memory 0: %x    memory 1: %x\n",MEMORY[CURRENT_LATCHES.PC>>1][0],MEMORY[CURRENT_LATCHES.PC>>1][1]);
+  printf("instruction: %s  %x\n",binary,instruction);
+
+  //to process trap functions set pc to 0
+  //don't have to implement RTI
+  //be sure to do 16-bit arithmetic
+  //lea doesnt change condition codes
 }
