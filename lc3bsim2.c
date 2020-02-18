@@ -405,6 +405,12 @@ int main(int argc, char *argv[]) {
    Begin your code here 	  			       */
 
 /***************************************************************/
+int signExt(int num, int index){
+  if(index==1){
+    num=num*-1;
+  }
+  return num;
+}
 void updateCond(int num){
   if(num>0){
     NEXT_LATCHES.N=0;
@@ -439,9 +445,11 @@ void updateMem(int instruction){
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
     else{//imediate add
-      int imm5=instruction&0x001F;
-       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+imm5;
-       updateCond(NEXT_LATCHES.REGS[dr]);
+      int imm5=instruction&0x000F;
+      int sign=instruction&0x0010;
+      imm5=signExt(imm5, sign);
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+imm5;
+      updateCond(NEXT_LATCHES.REGS[dr]);
     }
   }
 
@@ -450,25 +458,104 @@ void updateMem(int instruction){
     condition&=0x0020;
     int sr1=instruction&0x01C0;
     sr1>>=6;
-    if(condition==0){//register add
+    if(condition==0){//register and
       int sr2=instruction&0x0007;
       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&CURRENT_LATCHES.REGS[sr2];
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
-    else{//imediate add
+    else{//imediate and
       int imm5=instruction&0x001F;
+      int sign=instruction&0x0010;
+      imm5=signExt(imm5, sign);
        NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&imm5;
+       updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+  }
+
+  //XOR
+  if(operation==0x9){
+    condition&=0x0020;
+    int sr1=instruction&0x01C0;
+    sr1>>=6;
+    if(condition==0){//register xor
+      int sr2=instruction&0x0007;
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^CURRENT_LATCHES.REGS[sr2];
+      updateCond(NEXT_LATCHES.REGS[dr]);
+    }
+    else{//imediate xor
+      int imm5=instruction&0x001F;
+      int sign=instruction&0x0010;
+      imm5=signExt(imm5, sign);
+       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^imm5;
        updateCond(NEXT_LATCHES.REGS[dr]);
     }
   }
 
   //BR
   if(operation==0){
-    int offset=instruction&0x01FF;
+    int offset=instruction&0x00FF;
+    int sign=instruction&0x0100;
+    offset=signExt(offset, sign);
+    offset<<=1;
     NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offset;
   }
 
   //JMP
+  if(operation==0xC){
+    int bReg=instruction&0x01C0;
+    bReg>>=6;
+    NEXT_LATCHES.PC=CURRENT_LATCHES.REGS[bReg];
+  }
+
+  //JSR and JSRR
+  if(operation==0x4){
+    condition=instruction&0x0800;
+    NEXT_LATCHES.REGS[7]=CURRENT_LATCHES.PC+2;
+    if(condition>0){
+      int offSet=instruction&0x07FF;
+      int sign=instruction&0x0400;
+      offSet=signExt(offSet, sign);
+      offSet<<=1;
+      NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offSet;
+    }
+    else{
+      int baseR=instruction&0x01C0;
+      NEXT_LATCHES.PC=CURRENT_LATCHES.REGS[baseR];
+    }
+  }
+
+  //SHF
+  if(operation==0xD){
+    condition=instruction&0x0030;
+    condition>>=4;
+    int sr=instruction&0x01C0;
+    sr>>=6;
+    int amount=instruction&0x000F;
+    int sign=0;
+    if(condition==0){
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr]<<amount;
+    }
+    if(condition==1){
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr]>>amount;
+    }
+    if(condition==3){
+      int sign=CURRENT_LATCHES.REGS[sr]>>15;
+      int temp=CURRENT_LATCHES.REGS[sr]&0x7FFF;
+      temp>>=amount;
+      NEXT_LATCHES.REGS[dr]=signExt(temp, sign);
+    }
+    updateCond(NEXT_LATCHES.REGS[dr]);
+  }
+
+  // //NOT
+  // if(operation==0x9){
+  //   int sR=instruction&0x01C0;
+  //   sR>>=6;
+  //   NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sR]*-1;
+  //   updateCond(NEXT_LATCHES.REGS[dr]);
+  // }
+
+
 }
 
 
