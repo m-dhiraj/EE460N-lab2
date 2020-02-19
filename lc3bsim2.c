@@ -405,12 +405,6 @@ int main(int argc, char *argv[]) {
    Begin your code here 	  			       */
 
 /***************************************************************/
-int signExt(int num, int index){
-  if(index==1){
-    num=num*-1;
-  }
-  return num;
-}
 void updateCond(int num){
   if(num>0){
     NEXT_LATCHES.N=0;
@@ -445,9 +439,11 @@ void updateMem(int instruction){
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
     else{//imediate add
-      int imm5=instruction&0x000F;
-      int sign=instruction&0x0010;
-      imm5=signExt(imm5, sign);
+      int imm5=instruction&0x0F;
+      int sign=instruction&0x10;
+      if(sign>=1){
+        imm5|=0xFFFFFFF0;
+      }
       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+imm5;
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
@@ -464,11 +460,13 @@ void updateMem(int instruction){
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
     else{//imediate and
-      int imm5=instruction&0x001F;
-      int sign=instruction&0x0010;
-      imm5=signExt(imm5, sign);
-       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&imm5;
-       updateCond(NEXT_LATCHES.REGS[dr]);
+      int imm5=instruction&0x0F;
+      int sign=instruction&0x10;
+      if(sign>=1){
+        imm5|=0xFFFFFFF0;
+      }
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&imm5;
+      updateCond(NEXT_LATCHES.REGS[dr]);
     }
   }
 
@@ -483,21 +481,30 @@ void updateMem(int instruction){
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
     else{//imediate xor
-      int imm5=instruction&0x001F;
-      int sign=instruction&0x0010;
-      imm5=signExt(imm5, sign);
-       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^imm5;
-       updateCond(NEXT_LATCHES.REGS[dr]);
+      int imm5=instruction&0x0F;
+      int sign=instruction&0x10;
+      if(sign>=1){
+        imm5|=0xFFFFFFF0;
+      }
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^imm5;
+      updateCond(NEXT_LATCHES.REGS[dr]);
     }
   }
 
   //BR
   if(operation==0){
-    int offset=instruction&0x00FF;
-    int sign=instruction&0x0100;
-    offset=signExt(offset, sign);
-    offset<<=1;
-    NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offset;
+    int n=instruction&0x0800;
+    int z=instruction&0x0400;
+    int p=instruction&0x0200;
+    if((n&&CURRENT_LATCHES.N)||(p&&CURRENT_LATCHES.P)||(z&&CURRENT_LATCHES.Z)){
+      int offset=instruction&0x0FF;
+      int sign=instruction&0x100;
+      if(sign>=1){
+        offset|=0xFFFFFF00;
+      }
+      offset>>=1;
+      NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offset;
+    }
   }
 
   //JMP
@@ -510,16 +517,19 @@ void updateMem(int instruction){
   //JSR and JSRR
   if(operation==0x4){
     condition=instruction&0x0800;
-    NEXT_LATCHES.REGS[7]=CURRENT_LATCHES.PC+2;
+    NEXT_LATCHES.REGS[7]=NEXT_LATCHES.PC;
     if(condition>0){
-      int offSet=instruction&0x07FF;
+      int offSet=instruction&0x03FF;
       int sign=instruction&0x0400;
-      offSet=signExt(offSet, sign);
-      offSet<<=1;
+      if(sign>=1){
+        offSet|=0xFFFFFC00;
+      }
+      offSet>>=1;
       NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offSet;
     }
     else{
       int baseR=instruction&0x01C0;
+      baseR>>=6;
       NEXT_LATCHES.PC=CURRENT_LATCHES.REGS[baseR];
     }
   }
@@ -539,25 +549,61 @@ void updateMem(int instruction){
       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr]>>amount;
     }
     if(condition==3){
-      int sign=CURRENT_LATCHES.REGS[sr]>>15;
-      int temp=CURRENT_LATCHES.REGS[sr]&0x7FFF;
-      temp>>=amount;
-      NEXT_LATCHES.REGS[dr]=signExt(temp, sign);
+      int sign=CURRENT_LATCHES.REGS[sr]&0x8000;
+      int temp=CURRENT_LATCHES.REGS[sr];
+      int i;
+      for(i=0;i<amount;i++){
+        temp>>=1;
+        temp+=sign;
+      }
+      NEXT_LATCHES.REGS[dr]=temp;
     }
     updateCond(NEXT_LATCHES.REGS[dr]);
   }
 
-  // //NOT
-  // if(operation==0x9){
-  //   int sR=instruction&0x01C0;
-  //   sR>>=6;
-  //   NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sR]*-1;
-  //   updateCond(NEXT_LATCHES.REGS[dr]);
-  // }
+  //NOT
+  //if(operation==0x9){
+  //  int sR=instruction&0x01C0;
+  //  sR>>=6;
+  //  NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sR]*-1;
+  //  updateCond(NEXT_LATCHES.REGS[dr]);
+  //}
 
+  //TRAP
+  if(operation==0xf){
+    NEXT_LATCHES.PC=0;
+  }
+  
+  //LEA
+  if(operation==0xe){
+    int offset=instruction&0xff;
+    int sign=instruction&0x100;
+    if(sign>=1){
+      offset|=0xffffff00;
+    }
+    NEXT_LATCHES.REGS[dr]=NEXT_LATCHES.PC+offset;
+  }
 
+  //LDB
+  if(operation==0x2){
+
+  }
+
+  //LDW
+  if(operation==0x6){
+
+  }
+
+  //STB
+  if(operation==0x3){
+
+  }
+
+  //STW
+  if(operation==0x7){
+
+  }
 }
-
 
 char* toBinary(int num){
   //printf("toBinary called");
@@ -571,7 +617,6 @@ char* toBinary(int num){
   word[16]='\0';
   return word;
 }
-
 
 void process_instruction(){
   /*  function: process_instruction
@@ -590,13 +635,11 @@ void process_instruction(){
 
   int instruction=(MEMORY[CURRENT_LATCHES.PC>>1][1]<<8)+MEMORY[CURRENT_LATCHES.PC>>1][0];
   NEXT_LATCHES.PC=CURRENT_LATCHES.PC+2;
-  char* binary=toBinary(instruction);
-  //printf("current latch pc: %x\n",CURRENT_LATCHES.PC);
-  //printf("memory 0: %x    memory 1: %x\n",MEMORY[CURRENT_LATCHES.PC>>1][0],MEMORY[CURRENT_LATCHES.PC>>1][1]);
-  printf("instruction: %s  %x\n",binary,instruction);
-  //dhiraj code
+  //char* binary=toBinary(instruction);
+  //printf("instruction: %s  %x\n",binary,instruction);
   
-  //dhiraj code ended
+  updateMem(instruction);
+  
   //to process trap functions set pc to 0
   //don't have to implement RTI
   //be sure to do 16-bit arithmetic
