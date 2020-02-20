@@ -1,11 +1,7 @@
 /*
-    Remove all unnecessary lines (including this one) 
-    in this comment.
-    REFER TO THE SUBMISSION INSTRUCTION FOR DETAILS
-
-    Name 1: Full name of the first partner 
-    Name 2: Full name of the second partner
-    UTEID 1: UT EID of the first partner
+    Name 1: Dhiraj Manukonda
+    Name 2: Kolbe Bauer
+    UTEID 1: DM48254
     UTEID 2: UT EID of the second partner
 */
 
@@ -392,16 +388,12 @@ int main(int argc, char *argv[]) {
 /* Do not modify the above code.
    You are allowed to use the following global variables in your
    code. These are defined above.
-
    MEMORY
-
    CURRENT_LATCHES
    NEXT_LATCHES
-
    You may define your own local/global variables and functions.
    You may use the functions to get at the control bits defined
    above.
-
    Begin your code here 	  			       */
 
 /***************************************************************/
@@ -586,22 +578,86 @@ void updateMem(int instruction){
 
   //LDB
   if(operation==0x2){
-
+    int offset=instruction&0x001f;
+    int sign=instruction&0x0020;
+    if(sign>=1){
+      offset|=0xffffffC0;
+    }
+    int bR=instruction&0x01C0;
+    bR>>=6;
+    int loc = CURRENT_LATCHES.REGS[bR]+offset;
+    int pos=loc%2;
+    loc>>2;
+    NEXT_LATCHES.REGS[dr]=(MEMORY[loc][pos]);
+    sign=NEXT_LATCHES.REGS[dr]&0x0080;
+    if(sign>=1){
+      offset|=0xffffff00;
+    }
+    updateCond(NEXT_LATCHES.REGS[dr]);
   }
 
   //LDW
   if(operation==0x6){
-
+    int offset=instruction&0x001f;
+    int sign=instruction&0x0020;
+    if(sign>=1){
+      offset|=0xffffffC0;
+    }
+    offset<<=1;
+    int bR=instruction&0x01C0;
+    bR>>=6;
+    int loc = CURRENT_LATCHES.REGS[bR]+offset;
+    int pos=loc%2;
+    loc>>=2;
+    if(pos==0){
+      NEXT_LATCHES.REGS[dr]=(MEMORY[loc][1]<<8)+(MEMORY[loc][0]);
+    }
+    else{
+      NEXT_LATCHES.REGS[dr]=(MEMORY[loc][0]<<8)+(MEMORY[loc+1][1]);
+    }
+    updateCond(NEXT_LATCHES.REGS[dr]);
   }
 
   //STB
   if(operation==0x3){
-
+    int sr=dr;
+    int offset=instruction&0x001f;
+    int sign=instruction&0x0020;
+    if(sign>=1){
+      offset|=0xffffffC0;
+    }
+    dr=instruction&0x01C0;
+    dr>>=6;
+    int loc=CURRENT_LATCHES.REGS[dr]+offset;
+    int pos=loc%2;
+    loc>>=2;
+    MEMORY[loc][pos]=CURRENT_LATCHES.REGS[sr];
+    updateCond(MEMORY[loc][pos]);
   }
 
   //STW
   if(operation==0x7){
-
+    int sr=dr;
+    int offset=instruction&0x001f;
+    int sign=instruction&0x0020;
+    if(sign>=1){
+      offset|=0xffffffC0;
+    }
+    dr=instruction&0x01C0;
+    dr>>=6;
+    int loc=CURRENT_LATCHES.REGS[dr]+offset;
+    int pos=loc%2;
+    loc>>=2;
+    int check=0;
+    if(pos==0){
+      MEMORY[loc][0]=CURRENT_LATCHES.REGS[sr]&0x00FF;
+      MEMORY[loc][1]=(CURRENT_LATCHES.REGS[sr]&0xFF00)>>8;
+    }
+    else{
+      MEMORY[loc+1][1]=CURRENT_LATCHES.REGS[sr]&0x00FF;
+      MEMORY[loc][0]=(CURRENT_LATCHES.REGS[sr]&0xFF00)>>8;
+    }
+    updateCond(MEMORY[loc][pos]);
   }
 }
 
