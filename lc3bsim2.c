@@ -632,7 +632,6 @@ void updateMem(int instruction){
     int pos=loc%2;
     loc>>=2;
     MEMORY[loc][pos]=CURRENT_LATCHES.REGS[sr];
-    updateCond(MEMORY[loc][pos]);
   }
 
   //STW
@@ -657,7 +656,6 @@ void updateMem(int instruction){
       MEMORY[loc+1][1]=CURRENT_LATCHES.REGS[sr]&0x00FF;
       MEMORY[loc][0]=(CURRENT_LATCHES.REGS[sr]&0xFF00)>>8;
     }
-    updateCond(MEMORY[loc][pos]);
   }
 }
 
