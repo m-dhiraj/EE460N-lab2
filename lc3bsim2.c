@@ -2,7 +2,7 @@
     Name 1: Dhiraj Manukonda
     Name 2: Kolbe Bauer
     UTEID 1: DM48254
-    UTEID 2: UT EID of the second partner
+    UTEID 2: kb37324
 */
 
 /***************************************************************/
@@ -464,17 +464,17 @@ void updateMem(int instruction){
 
   //XOR
   if(operation==0x9){
-    condition&=0x0020;
-    int sr1=instruction&0x01C0;
+    condition&=0x00000020;
+    int sr1=instruction&0x000001C0;
     sr1>>=6;
     if(condition==0){//register xor
-      int sr2=instruction&0x0007;
+      int sr2=instruction&0x00000007;
       NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^CURRENT_LATCHES.REGS[sr2];
       updateCond(NEXT_LATCHES.REGS[dr]);
     }
     else{//imediate xor
-      int imm5=instruction&0x0F;
-      int sign=instruction&0x10;
+      int imm5=instruction&0x0000000F;
+      int sign=instruction&0x00000010;
       if(sign>=1){
         imm5|=0xFFFFFFF0;
       }
@@ -494,8 +494,8 @@ void updateMem(int instruction){
       if(sign>=1){
         offset|=0xFFFFFF00;
       }
-      offset>>=1;
-      NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offset;
+      offset<<=1;
+      NEXT_LATCHES.PC=NEXT_LATCHES.PC+offset;
     }
   }
 
@@ -573,7 +573,7 @@ void updateMem(int instruction){
     if(sign>=1){
       offset|=0xffffff00;
     }
-    NEXT_LATCHES.REGS[dr]=NEXT_LATCHES.PC+offset;
+    NEXT_LATCHES.REGS[dr]=NEXT_LATCHES.PC+(offset<<1);
   }
 
   //LDB
@@ -587,12 +587,13 @@ void updateMem(int instruction){
     bR>>=6;
     int loc = CURRENT_LATCHES.REGS[bR]+offset;
     int pos=loc%2;
-    loc>>2;
-    NEXT_LATCHES.REGS[dr]=(MEMORY[loc][pos]);
-    sign=NEXT_LATCHES.REGS[dr]&0x0080;
+    //shouldnt this be one?
+    //loc>>=1;
+    NEXT_LATCHES.REGS[dr]=(MEMORY[loc>>1][loc%2]);
+    /*sign=NEXT_LATCHES.REGS[dr]&0x0080;
     if(sign>=1){
       offset|=0xffffff00;
-    }
+    }*/
     updateCond(NEXT_LATCHES.REGS[dr]);
   }
 
@@ -608,7 +609,10 @@ void updateMem(int instruction){
     bR>>=6;
     int loc = CURRENT_LATCHES.REGS[bR]+offset;
     int pos=loc%2;
-    loc>>=2;
+    //this will always be an even number. you dummy
+    //this should also just be one
+        //we're multiplying by two to divide by two... redundant
+    loc>>=1;
     if(pos==0){
       NEXT_LATCHES.REGS[dr]=(MEMORY[loc][1]<<8)+(MEMORY[loc][0]);
     }
@@ -621,17 +625,21 @@ void updateMem(int instruction){
   //STB
   if(operation==0x3){
     int sr=dr;
-    int offset=instruction&0x001f;
-    int sign=instruction&0x0020;
+    int offset=instruction&0x0000001f;
+    int sign=instruction&0x00000020;
     if(sign>=1){
       offset|=0xffffffC0;
     }
-    dr=instruction&0x01C0;
+    dr=instruction&0x000001C0;
     dr>>=6;
     int loc=CURRENT_LATCHES.REGS[dr]+offset;
     int pos=loc%2;
-    loc>>=2;
-    MEMORY[loc][pos]=CURRENT_LATCHES.REGS[sr];
+    //shouldnt this be a one??
+    loc>>=1;
+    //this needs to be masked to only store one byte of data.
+    //rn you're putting 16bits of data into an 8 bit space and it works bc theyre stored as ints
+    //but we need to mask this to only store the low byte of data
+    MEMORY[loc][pos]=CURRENT_LATCHES.REGS[sr]&0x000000ff;
   }
 
   //STW
@@ -642,15 +650,23 @@ void updateMem(int instruction){
     if(sign>=1){
       offset|=0xffffffC0;
     }
+    offset<<=1;
+    //offset needs to be leftshifted by one
     dr=instruction&0x01C0;
     dr>>=6;
     int loc=CURRENT_LATCHES.REGS[dr]+offset;
+    //this is redundant
     int pos=loc%2;
-    loc>>=2;
-    int check=0;
+    //this should be a 1
+    printf("%d\n",loc);
+    printf("%d\n",dr);
+    loc>>=1;
+    //literally never gets used... why do we have this check?
+    //int check=0;
+    printf("%d\n",loc);
     if(pos==0){
-      MEMORY[loc][0]=CURRENT_LATCHES.REGS[sr]&0x00FF;
-      MEMORY[loc][1]=(CURRENT_LATCHES.REGS[sr]&0xFF00)>>8;
+      MEMORY[loc][0]=CURRENT_LATCHES.REGS[sr]&0x000000FF;
+      MEMORY[loc][1]=(CURRENT_LATCHES.REGS[sr]&0x0000FF00)>>8;
     }
     else{
       MEMORY[loc+1][1]=CURRENT_LATCHES.REGS[sr]&0x00FF;
