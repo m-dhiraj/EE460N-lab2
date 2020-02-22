@@ -516,8 +516,8 @@ void updateMem(int instruction){
       if(sign>=1){
         offSet|=0xFFFFFC00;
       }
-      offSet>>=1;
-      NEXT_LATCHES.PC=CURRENT_LATCHES.PC+offSet;
+      offSet<<=1;
+      NEXT_LATCHES.PC=NEXT_LATCHES.PC+offSet;
     }
     else{
       int baseR=instruction&0x01C0;
