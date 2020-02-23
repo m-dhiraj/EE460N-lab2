@@ -397,6 +397,13 @@ int main(int argc, char *argv[]) {
    Begin your code here 	  			       */
 
 /***************************************************************/
+int regSEXT(int num){
+  if(num&0x8000>=1){
+    return num|0xffff0000;
+  }
+  return num;
+}
+
 void updateCond(int num){
   if(num>0){
     NEXT_LATCHES.N=0;
@@ -427,8 +434,7 @@ void updateMem(int instruction){
     sr1>>=6;
     if(condition==0){//register add
       int sr2=instruction&0x0007;
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+CURRENT_LATCHES.REGS[sr2];
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1)]+regSEXT(CURRENT_LATCHES.REGS[sr2]);
     }
     else{//imediate add
       int imm5=instruction&0x0F;
@@ -436,9 +442,10 @@ void updateMem(int instruction){
       if(sign>=1){
         imm5|=0xFFFFFFF0;
       }
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]+imm5;
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1])+imm5;
     }
+    updateCond(NEXT_LATCHES.REGS[dr]);
+    NEXT_LATCHES.REGS[dr]=Low16bits(NEXT_LATCHES.REGS[dr]);
   }
 
   //AND
@@ -448,8 +455,7 @@ void updateMem(int instruction){
     sr1>>=6;
     if(condition==0){//register and
       int sr2=instruction&0x0007;
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&CURRENT_LATCHES.REGS[sr2];
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1])&regSEXT(CURRENT_LATCHES.REGS[sr2]);
     }
     else{//imediate and
       int imm5=instruction&0x0F;
@@ -457,9 +463,10 @@ void updateMem(int instruction){
       if(sign>=1){
         imm5|=0xFFFFFFF0;
       }
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]&imm5;
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1])&imm5;
     }
+    updateCond(NEXT_LATCHES.REGS[dr]);
+    NEXT_LATCHES.REGS[dr]=Low16bits(NEXT_LATCHES.REGS[dr]);
   }
 
   //XOR
@@ -469,8 +476,7 @@ void updateMem(int instruction){
     sr1>>=6;
     if(condition==0){//register xor
       int sr2=instruction&0x00000007;
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^CURRENT_LATCHES.REGS[sr2];
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1]) ^ regSEXT(CURRENT_LATCHES.REGS[sr2]);
     }
     else{//imediate xor
       int imm5=instruction&0x0000000F;
@@ -478,9 +484,10 @@ void updateMem(int instruction){
       if(sign>=1){
         imm5|=0xFFFFFFF0;
       }
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr1]^imm5;
-      updateCond(NEXT_LATCHES.REGS[dr]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1]) ^ imm5;
     }
+    updateCond(NEXT_LATCHES.REGS[dr]);
+    NEXT_LATCHES.REGS[dr]=Low16bits(NEXT_LATCHES.REGS[dr]);
   }
 
   //BR
@@ -503,13 +510,13 @@ void updateMem(int instruction){
   if(operation==0xC){
     int bReg=instruction&0x01C0;
     bReg>>=6;
-    NEXT_LATCHES.PC=CURRENT_LATCHES.REGS[bReg];
+    NEXT_LATCHES.PC=regSEXT(CURRENT_LATCHES.REGS[bReg]);
   }
 
   //JSR and JSRR
   if(operation==0x4){
     condition=instruction&0x0800;
-    NEXT_LATCHES.REGS[7]=NEXT_LATCHES.PC;
+    int temp=NEXT_LATCHES.PC;
     if(condition>0){
       int offSet=instruction&0x03FF;
       int sign=instruction&0x0400;
@@ -524,6 +531,7 @@ void updateMem(int instruction){
       baseR>>=6;
       NEXT_LATCHES.PC=CURRENT_LATCHES.REGS[baseR];
     }
+    NEXT_LATCHES.REGS[7]=temp;
   }
 
   //SHF
@@ -535,10 +543,10 @@ void updateMem(int instruction){
     int amount=instruction&0x000F;
     int sign=0;
     if(condition==0){
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr]<<amount;
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr] << amount;
     }
     if(condition==1){
-      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr]>>amount;
+      NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sr] >> amount;
     }
     if(condition==3){
       int sign=CURRENT_LATCHES.REGS[sr]&0x8000;
@@ -551,15 +559,8 @@ void updateMem(int instruction){
       NEXT_LATCHES.REGS[dr]=temp;
     }
     updateCond(NEXT_LATCHES.REGS[dr]);
+    NEXT_LATCHES.REGS[dr]=Low16bits(NEXT_LATCHES.REGS[dr]);
   }
-
-  //NOT
-  //if(operation==0x9){
-  //  int sR=instruction&0x01C0;
-  //  sR>>=6;
-  //  NEXT_LATCHES.REGS[dr]=CURRENT_LATCHES.REGS[sR]*-1;
-  //  updateCond(NEXT_LATCHES.REGS[dr]);
-  //}
 
   //TRAP
   if(operation==0xf){
@@ -574,6 +575,7 @@ void updateMem(int instruction){
       offset|=0xffffff00;
     }
     NEXT_LATCHES.REGS[dr]=NEXT_LATCHES.PC+(offset<<1);
+    NEXT_LATCHES.REGS[dr]=Low16bits(NEXT_LATCHES.REGS[dr]);
   }
 
   //LDB
