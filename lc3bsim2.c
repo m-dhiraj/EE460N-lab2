@@ -655,15 +655,8 @@ void updateMem(int instruction){
     dr=instruction&0x01C0;
     dr>>=6;
     int loc=CURRENT_LATCHES.REGS[dr]+offset;
-    //this is redundant
     int pos=loc%2;
-    //this should be a 1
-    printf("%d\n",loc);
-    printf("%d\n",dr);
     loc>>=1;
-    //literally never gets used... why do we have this check?
-    //int check=0;
-    printf("%d\n",loc);
     if(pos==0){
       MEMORY[loc][0]=CURRENT_LATCHES.REGS[sr]&0x000000FF;
       MEMORY[loc][1]=(CURRENT_LATCHES.REGS[sr]&0x0000FF00)>>8;
@@ -676,7 +669,7 @@ void updateMem(int instruction){
 }
 
 char* toBinary(int num){
-  //printf("toBinary called");
+  
   //stringa1 = (char*) malloc((n+1)*sizeof(char));
   char* word=(char*)malloc((16)*sizeof(char));
   int i;
