@@ -405,21 +405,24 @@ int regSEXT(int num){
 }
 
 void updateCond(int num){
-  if(num>0){
+  if((num<<16)>0){
     NEXT_LATCHES.N=0;
     NEXT_LATCHES.Z=0;
     NEXT_LATCHES.P=1;
   }
-  else if(num==0){
+  else if((num<<16)==0){
     NEXT_LATCHES.N=0;
     NEXT_LATCHES.Z=1;
     NEXT_LATCHES.P=0;
   }
-  else if(num<0){
+  else if((num<<16)<0){
     NEXT_LATCHES.N=1;
     NEXT_LATCHES.Z=0;
     NEXT_LATCHES.P=0;
   }
+  /*else{
+    printf("you a dum dum\n");
+  }*/
 }
 
 void updateMem(int instruction){
@@ -434,7 +437,7 @@ void updateMem(int instruction){
     sr1>>=6;
     if(condition==0){//register add
       int sr2=instruction&0x0007;
-      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1)]+regSEXT(CURRENT_LATCHES.REGS[sr2]);
+      NEXT_LATCHES.REGS[dr]=regSEXT(CURRENT_LATCHES.REGS[sr1])+regSEXT(CURRENT_LATCHES.REGS[sr2]);
     }
     else{//imediate add
       int imm5=instruction&0x0F;
@@ -591,6 +594,7 @@ void updateMem(int instruction){
     int pos=loc%2;
     //shouldnt this be one?
     //loc>>=1;
+    loc=Low16bits(loc);
     NEXT_LATCHES.REGS[dr]=(MEMORY[loc>>1][loc%2]);
     /*sign=NEXT_LATCHES.REGS[dr]&0x0080;
     if(sign>=1){
@@ -614,6 +618,7 @@ void updateMem(int instruction){
     //this will always be an even number. you dummy
     //this should also just be one
         //we're multiplying by two to divide by two... redundant
+    loc=Low16bits(loc);
     loc>>=1;
     if(pos==0){
       NEXT_LATCHES.REGS[dr]=(MEMORY[loc][1]<<8)+(MEMORY[loc][0]);
@@ -637,6 +642,7 @@ void updateMem(int instruction){
     int loc=CURRENT_LATCHES.REGS[dr]+offset;
     int pos=loc%2;
     //shouldnt this be a one??
+    loc=Low16bits(loc);
     loc>>=1;
     //this needs to be masked to only store one byte of data.
     //rn you're putting 16bits of data into an 8 bit space and it works bc theyre stored as ints
@@ -658,6 +664,7 @@ void updateMem(int instruction){
     dr>>=6;
     int loc=CURRENT_LATCHES.REGS[dr]+offset;
     int pos=loc%2;
+    loc=Low16bits(loc);
     loc>>=1;
     if(pos==0){
       MEMORY[loc][0]=CURRENT_LATCHES.REGS[sr]&0x000000FF;
